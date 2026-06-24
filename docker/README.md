@@ -26,7 +26,7 @@ docker/
 
 ├── inferencia.py
 
-├── requirements.txt
+├── requeriments.txt
 
 ├── Dockerfile
 
