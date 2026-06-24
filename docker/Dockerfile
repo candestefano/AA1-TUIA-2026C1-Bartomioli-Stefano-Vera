@@ -6,11 +6,11 @@ ENV PYTHONUNBUFFERED=1
 # Carpeta de trabajo dentro del contenedor
 WORKDIR /app
 
-# Copiamos requirements primero (mejor cache)
-COPY requirements.txt .
+# Copiamos requeriments primero (mejor cache)
+COPY requeriments.txt .
 
 # Instalamos dependencias
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requeriments.txt
 
 # Copiamos todo el proyecto dentro del contenedor
 COPY . .
