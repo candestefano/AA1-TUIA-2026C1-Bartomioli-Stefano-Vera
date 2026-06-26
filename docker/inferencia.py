@@ -78,4 +78,10 @@ df_procesado = preprocesar(df_input, prep)
 
 predictions = predict_model(model, data=df_procesado)
 
+salida = predictions[['prediction_label', 'prediction_score']]
+
+salida.to_csv('/files/predicciones.csv', index=False)
+
+print("Archivo guardado correctamente")
+
 print(predictions[['prediction_label', 'prediction_score']])
