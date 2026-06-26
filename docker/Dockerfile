@@ -1,19 +1,23 @@
 FROM python:3.10-slim
 
-# Evita prompts raros durante instalación
-ENV PYTHONUNBUFFERED=1
-
-# Carpeta de trabajo dentro del contenedor
 WORKDIR /app
 
-# Copiamos requeriments primero (mejor cache)
-COPY requeriments.txt .
+# Instalamos dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Instalamos dependencias
-RUN pip install --no-cache-dir -r requeriments.txt
+# Copiamos e instalamos dependencias Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiamos todo el proyecto dentro del contenedor
-COPY . .
+# Copiamos archivos necesarios
+COPY inferencia.py .
+COPY best_rain_model.pkl .
+COPY preprocessor.joblib .
 
-# Comando que se ejecuta cuando corre el container
+# Si querés incluir un CSV de prueba:
+# COPY weatherAUS_2026C1.csv .
+
+# Ejecutamos el script
 CMD ["python", "inferencia.py"]

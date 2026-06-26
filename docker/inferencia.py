@@ -1,63 +1,81 @@
 import pandas as pd
-import logging
-from sys import stdout
+import joblib
 from pycaret.classification import load_model, predict_model
-import os
 
-# ----------------------------
-# Logger
-# ----------------------------
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+INPUT_PATH = 'weatherAUS_2026C1.csv'
 
-logFormatter = logging.Formatter(
-    "%(asctime)s %(levelname)s %(filename)s: %(message)s"
-)
 
-consoleHandler = logging.StreamHandler(stdout)
-consoleHandler.setFormatter(logFormatter)
-logger.addHandler(consoleHandler)
+def preprocesar(df, prep):
 
-# ----------------------------
-# Paths
-# ----------------------------
-MODEL_PATH = "best_rain_model"
-INPUT_PATH = "/files/input.csv"
-OUTPUT_PATH = "/files/output.csv"
+    df = df.copy()
 
-# ----------------------------
-# Cargar modelo
-# ----------------------------
-if not os.path.exists(MODEL_PATH + ".pkl"):
-    logger.error(f"No se encontró el modelo en {MODEL_PATH}.pkl")
-    exit(1)
+    # Fecha -> mes
+    df['fecha'] = pd.to_datetime(df['fecha'])
+    df['mes'] = df['fecha'].dt.month
 
-model = load_model(MODEL_PATH)
-logger.info("Modelo cargado correctamente")
+    # Eliminar columnas innecesarias
+    df = df.drop(
+        columns=['fecha', 'id', 'llueve_manana', 'lluvia_manana'],
+        errors='ignore'
+    )
 
-# ----------------------------
-# Leer datos de entrada
-# ----------------------------
-if not os.path.exists(INPUT_PATH):
-    logger.error(f"No se encontró el archivo de entrada en {INPUT_PATH}")
-    exit(1)
+    # Imputación
+    for col in prep['col_imputar']:
+
+        medias_grupo = prep['medias_imputacion'][col]['grupo']
+        media_global = prep['medias_imputacion'][col]['global']
+
+        df[col] = df.apply(
+            lambda row:
+                medias_grupo.get(
+                    (row['ubicacion'], row['mes']),
+                    media_global
+                )
+                if pd.isnull(row[col])
+                else row[col],
+            axis=1
+        )
+
+        df[col] = df[col].fillna(media_global)
+
+    # Variable binaria
+    df['llovio_hoy'] = df['llovio_hoy'].map(
+        prep['llovio_hoy_map']
+    )
+
+    # One-Hot
+    df = pd.get_dummies(
+        df,
+        columns=prep['cols_cat'],
+        drop_first=True
+    )
+
+    # Alinear columnas
+    df = df.reindex(
+        columns=prep['columnas_finales'],
+        fill_value=0
+    )
+
+    # Escalar
+    df[prep['cols_num_scale']] = prep['scaler'].transform(
+        df[prep['cols_num_scale']]
+    )
+
+    return df
+
+
+# ==========================
+# Flujo principal
+# ==========================
+
+prep = joblib.load('preprocessor.joblib')
+
+model = load_model('best_rain_model')
 
 df_input = pd.read_csv(INPUT_PATH)
-logger.info("Input cargado correctamente")
 
-# ----------------------------
-# Predicción
-# ----------------------------
-predictions = predict_model(model, data=df_input)
-logger.info("Predicción realizada correctamente")
+df_procesado = preprocesar(df_input, prep)
 
-# PyCaret devuelve una columna llamada "prediction_label"
-df_output = predictions[["prediction_label"]]
-df_output.columns = ["RainTomorrow_predicted"]
+predictions = predict_model(model, data=df_procesado)
 
-# ----------------------------
-# Guardar output
-# ----------------------------
-df_output.to_csv(OUTPUT_PATH, index=False)
-logger.info(f"Output guardado en {OUTPUT_PATH}")
-logger.info("Inferencia finalizada correctamente")
+print(predictions[['prediction_label', 'prediction_score']])
