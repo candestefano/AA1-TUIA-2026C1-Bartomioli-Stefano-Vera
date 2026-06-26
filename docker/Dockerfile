@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiamos e instalamos dependencias Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requeriments.txt .
+RUN pip install --no-cache-dir -r requeriments.txt
 
 # Copiamos archivos necesarios
 COPY inferencia.py .
@@ -17,7 +17,7 @@ COPY best_rain_model.pkl .
 COPY preprocessor.joblib .
 
 # Si querés incluir un CSV de prueba:
-# COPY weatherAUS_2026C1.csv .
+COPY weatherAUS_2026C1.csv .
 
 # Ejecutamos el script
 CMD ["python", "inferencia.py"]
